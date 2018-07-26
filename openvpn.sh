@@ -95,12 +95,12 @@ if [[ -d /etc/openvpn/easy-rsa/ ]]; then
 fi
 # Get easy-rsa
 
-wget -O ~/EasyRSA-3.0.1.tgz "https://github.com/OpenVPN/easy-rsa/releases/download/3.0.1/EasyRSA-3.0.1.tgz"
-tar xzf ~/EasyRSA-3.0.1.tgz -C ~/
-mv ~/EasyRSA-3.0.1/ /etc/openvpn/
-mv /etc/openvpn/EasyRSA-3.0.1/ /etc/openvpn/easy-rsa/
+wget -O ~/EasyRSA-3.0.4.tgz "https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.4/EasyRSA-3.0.4.tgz"
+tar xzf ~/EasyRSA-3.0.4.tgz -C ~/
+mv ~/EasyRSA-3.0.4/ /etc/openvpn/
+mv /etc/openvpn/EasyRSA-3.0.4/ /etc/openvpn/easy-rsa/
 chown -R root:root /etc/openvpn/easy-rsa/
-rm -rf ~/EasyRSA-3.0.1.tgz
+rm -rf ~/EasyRSA-3.0.4.tgz
 cd /etc/openvpn/easy-rsa/
 
 # Create the PKI, set up the CA, the DH params and the server + client certificates
@@ -121,6 +121,9 @@ chown nobody:$GROUPNAME /etc/openvpn/crl.pem
 # Generate key for tls-auth
 openvpn --genkey --secret /etc/openvpn/ta.key
 
+# Generate ClientConfigDir
+mkdir /etc/openvpn/ccd
+
 # Generate server.conf
 echo "port $PORT
 proto $PROTOCOL
@@ -133,7 +136,8 @@ key server.key
 dh dh.pem
 tls-auth ta.key 0
 topology subnet
-server 10.8.0.0 255.255.255.0
+server 172.28.255.0 255.255.255.0
+client-config-dir /etc/openvpn/ccd
 ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
 
@@ -159,6 +163,7 @@ fi
 
 # Avoid an unneeded reboot
 echo 1 > /proc/sys/net/ipv4/ip_forward
+: << 'COMMENT'
 if pgrep firewalld; then
 	# Using both permanent and not permanent rules to avoid a firewalld
 	# reload.
@@ -205,6 +210,7 @@ if hash sestatus 2>/dev/null; then
 		fi
 	fi
 fi
+COMMENT
 
 # And finally, restart OpenVPN
 if [[ "$OS" = 'debian' ]]; then
@@ -263,19 +269,19 @@ chmod g+s /etc/openvpn/easy-rsa/
 #Generate a self-signed certificate for the web server
 mv /etc/lighttpd/ssl/ /etc/lighttpd/ssl.$$/
 mkdir /etc/lighttpd/ssl/
-openssl req -new -x509 -keyout /etc/lighttpd/ssl/server.pem -out /etc/lighttpd/ssl/server.pem -days 9999 -nodes -subj "/C=US/ST=California/L=San Francisco/O=example.com/OU=Ops Department/CN=example.com"
+openssl req -new -x509 -keyout /etc/lighttpd/ssl/server.pem -out /etc/lighttpd/ssl/server.pem -days 9999 -nodes -subj "/C=CH/ST=State/L=Location/O=Organization/OU=Organizational Unit/CN=example.com"
 chmod 744 /etc/lighttpd/ssl/server.pem
 
 
 #Configure the web server with the lighttpd.conf from GitHub
 mv /etc/lighttpd/lighttpd.conf /etc/lighttpd/lighttpd.conf.$$
-wget -O /etc/lighttpd/lighttpd.conf https://raw.githubusercontent.com/theonemule/simple-openvpn-server/master/lighttpd.conf
+wget -O /etc/lighttpd/lighttpd.conf https://raw.githubusercontent.com/pascal-gujer/simple-openvpn-server/master/lighttpd.conf
 
 #install the webserver scripts
 rm /var/www/html/*
-wget -O /var/www/html/index.sh https://raw.githubusercontent.com/theonemule/simple-openvpn-server/master/index.sh
+wget -O /var/www/html/index.sh https://raw.githubusercontent.com/pascal-gujer/simple-openvpn-server/master/index.sh
 
-wget -O /var/www/html/download.sh https://raw.githubusercontent.com/theonemule/simple-openvpn-server/master/download.sh
+wget -O /var/www/html/download.sh https://raw.githubusercontent.com/pascal-gujer/simple-openvpn-server/master/download.sh
 chown -R www-data:www-data /var/www/html/
 
 #set the password file for the WWW logon
